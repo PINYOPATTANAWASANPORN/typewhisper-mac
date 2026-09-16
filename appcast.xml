@@ -23,12 +23,12 @@
       <enclosure url="https://github.com/TypeWhisper/typewhisper-mac/releases/download/v1.7.0-rc1/TypeWhisper-v1.7.0-rc1.zip" sparkle:edSignature="qtOQq68/tT3GVmnWc5+UiidxocVCi0vg9whbd1tP3V4nYrG77rxOjDHtTcIlH+/FFIZXwYyRcvNU+tmO8yCJAQ==" length="13180175" type="application/octet-stream" />
     </item>
     <item>
-      <title>Version 1.6.0</title>
-      <pubDate>Wed, 19 Aug 2026 08:10:00 +0000</pubDate>
-      <sparkle:version>1091</sparkle:version>
-      <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
+      <title>Version 1.6.1</title>
+      <pubDate>Wed, 16 Sep 2026 10:25:55 +0000</pubDate>
+      <sparkle:version>1094</sparkle:version>
+      <sparkle:shortVersionString>1.6.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/TypeWhisper/typewhisper-mac/releases/download/v1.6.0/TypeWhisper-v1.6.0.zip" sparkle:edSignature="X4m6/hVdlR+nhQcjoya4AulCBc0QWeb8F0SM8lSZaAGkuwHZuPoNexu8je7+IPb5SrLwBkTgEJjzzdg4u/mzAQ==" length="11419108" type="application/octet-stream" />
+      <enclosure url="https://github.com/TypeWhisper/typewhisper-mac/releases/download/v1.6.1/TypeWhisper-v1.6.1.zip" sparkle:edSignature="0wow3LaRNNBBmcvo7R//w7LOgBnWWSiQuanmgLqkOF8d1eDHmMIa3QXKhAOSs83N/Fs8yEyzQvv71OZuFpURAA==" length="11444597" type="application/octet-stream" />
     </item>
   </channel>
 </rss>
