@@ -73,6 +73,7 @@ struct PolarValidationResponse: Codable {
 struct PolarErrorResponse: Codable {
     let detail: String?
     let type: String?
+    let error: String?
 }
 
 typealias LicenseDataTransport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
@@ -766,11 +767,14 @@ final class LicenseService: ObservableObject {
         }
     }
 
+    static let polarApiVersion = "2026-04"
+
     private func polarActivate(key: String) async throws -> PolarActivationResponse {
         let url = URL(string: "https://api.polar.sh/v1/customer-portal/license-keys/activate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(Self.polarApiVersion, forHTTPHeaderField: "Polar-Version")
 
         let deviceLabel = Host.current().localizedName ?? "Mac"
         let body: [String: Any] = [
@@ -801,6 +805,7 @@ final class LicenseService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(Self.polarApiVersion, forHTTPHeaderField: "Polar-Version")
 
         let body: [String: Any] = [
             "key": key,
@@ -829,6 +834,7 @@ final class LicenseService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(Self.polarApiVersion, forHTTPHeaderField: "Polar-Version")
 
         let body: [String: Any] = [
             "key": key,
@@ -1046,10 +1052,15 @@ enum LicenseError: LocalizedError {
 
     var isResourceMissing: Bool {
         switch self {
-        case .validationFailed(let statusCode, _), .deactivationFailed(let statusCode, _):
-            statusCode == 404
+        case .validationFailed(let statusCode, let detail), .deactivationFailed(let statusCode, let detail):
+            guard statusCode == 404 else { return false }
+            let lower = detail.lowercased()
+            if lower.contains("version") || lower.contains("polar-version") {
+                return false
+            }
+            return true
         case .networkError, .activationFailed, .keychainUnavailable:
-            false
+            return false
         }
     }
 

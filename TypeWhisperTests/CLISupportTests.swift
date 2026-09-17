@@ -765,6 +765,86 @@ final class CLISupportTests: XCTestCase {
         XCTAssertNil(Self.loadKeychainValue(service: keychainServiceName, account: "polar-supporter"))
     }
 
+    @MainActor
+    func testPolarRequestsIncludeApiVersionHeader() async throws {
+        let (defaults, suiteName) = try makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let keychainServiceName = "TypeWhisperTests.VersionHeader.\(UUID().uuidString)"
+        defer {
+            Self.deleteKeychainValue(service: keychainServiceName, account: "polar-license")
+            Self.deleteKeychainValue(service: keychainServiceName, account: "polar-supporter")
+        }
+
+        let service = LicenseService(
+            defaults: defaults,
+            keychainServiceName: keychainServiceName,
+            dataTransport: { request in
+                XCTAssertEqual(request.value(forHTTPHeaderField: "Polar-Version"), LicenseService.polarApiVersion)
+                switch request.url?.path {
+                case "/v1/customer-portal/license-keys/activate":
+                    let body = #"{"id":"activation-ver-123"}"#
+                    return (Data(body.utf8), Self.httpResponse(url: request.url!, statusCode: 200))
+                case "/v1/customer-portal/license-keys/validate":
+                    let body = #"{"id":"activation-ver-123","status":"granted","expires_at":null,"benefit_id":"40b82917-f74e-4cc3-8165-937f1f47b294"}"#
+                    return (Data(body.utf8), Self.httpResponse(url: request.url!, statusCode: 200))
+                case "/v1/customer-portal/license-keys/deactivate":
+                    return (Data(), Self.httpResponse(url: request.url!, statusCode: 204))
+                default:
+                    XCTFail("Unexpected request path: \(request.url?.path ?? "nil")")
+                    return (Data(), Self.httpResponse(url: request.url!, statusCode: 500))
+                }
+            }
+        )
+
+        _ = await service.activateAnyKey("TYPEWHISPER-VER-TEST")
+        XCTAssertEqual(service.licenseStatus, .active)
+
+        await service.validateLicenseIfNeeded()
+        XCTAssertEqual(service.licenseStatus, .active)
+
+        await service.deactivateLicense()
+        XCTAssertEqual(service.licenseStatus, .unlicensed)
+    }
+
+    @MainActor
+    func testSupporterValidationPreservesLocalStateWhen404IsVersionOrCompatibilityError() async throws {
+        let (defaults, suiteName) = try makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let keychainServiceName = "TypeWhisperTests.Version404.\(UUID().uuidString)"
+        defer { Self.deleteKeychainValue(service: keychainServiceName, account: "polar-supporter") }
+
+        let storedSecret = "supporter-key|activation-123"
+        Self.storeKeychainValue(
+            storedSecret,
+            service: keychainServiceName,
+            account: "polar-supporter"
+        )
+
+        let service = LicenseService(
+            defaults: defaults,
+            keychainServiceName: keychainServiceName,
+            dataTransport: { request in
+                XCTAssertEqual(request.url?.path, "/v1/customer-portal/license-keys/validate")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "Polar-Version"), LicenseService.polarApiVersion)
+                let body = #"{"error":"VersionNotSupported","detail":"API version deprecated or invalid"}"#
+                return (Data(body.utf8), Self.httpResponse(url: request.url!, statusCode: 404))
+            }
+        )
+
+        service.supporterStatus = .active
+        service.supporterTier = .gold
+        defaults.set(Date.distantPast, forKey: UserDefaultsKeys.lastSupporterValidation)
+
+        await service.validateSupporterIfNeeded()
+
+        // State must remain intact, NOT wiped to .unlicensed
+        XCTAssertEqual(service.supporterStatus, .active)
+        XCTAssertEqual(service.supporterTier, .gold)
+        XCTAssertEqual(Self.loadKeychainValue(service: keychainServiceName, account: "polar-supporter"), storedSecret)
+    }
+
     private actor ManagedLicenseServer {
         var paths: [String] = []
         var activationCount = 0
