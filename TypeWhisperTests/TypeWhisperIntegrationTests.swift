@@ -5348,6 +5348,95 @@ final class TypeWhisperIntegrationTests: XCTestCase {
     }
 
     @MainActor
+    func testPreserveClipboardDoesNotOverwriteNewerClipboardContentWhenCopiedDuringWait() async throws {
+        let service = TextInsertionService()
+        let pasteboard = NSPasteboard.withUniqueName()
+        service.accessibilityGrantedOverride = true
+        service.pasteboardProvider = { pasteboard }
+        service.focusedTextElementOverride = { nil }
+        service.defaultPasteFallbackRestoreDelay = .milliseconds(80)
+
+        let pasteStarted = expectation(description: "synthetic paste started")
+        service.pasteSimulatorOverride = {
+            pasteStarted.fulfill()
+        }
+
+        pasteboard.clearContents()
+        pasteboard.setString("Initial clipboard snapshot", forType: .string)
+
+        let insertionTask = Task {
+            try await service.insertText("Dictated text", preserveClipboard: true)
+        }
+
+        await fulfillment(of: [pasteStarted], timeout: 1.0)
+        XCTAssertEqual(pasteboard.string(forType: .string), "Dictated text")
+
+        // External application or user copies new content during the restoration delay wait
+        pasteboard.clearContents()
+        pasteboard.setString("Newer external user copy", forType: .string)
+
+        let result = try await insertionTask.value
+        XCTAssertEqual(result, .pasted(verification: .unverified(.focusedTextStateUnavailable)))
+
+        // Ownership validation prevents overwriting the newer external clipboard content
+        XCTAssertEqual(pasteboard.string(forType: .string), "Newer external user copy")
+    }
+
+    @MainActor
+    func testPreserveClipboardDoesNotOverwriteIdenticalTextWithNewerChangeCount() async throws {
+        let service = TextInsertionService()
+        let pasteboard = NSPasteboard.withUniqueName()
+        service.accessibilityGrantedOverride = true
+        service.pasteboardProvider = { pasteboard }
+        service.focusedTextElementOverride = { nil }
+        service.defaultPasteFallbackRestoreDelay = .milliseconds(80)
+
+        let pasteStarted = expectation(description: "synthetic paste started")
+        service.pasteSimulatorOverride = {
+            pasteStarted.fulfill()
+        }
+
+        pasteboard.clearContents()
+        pasteboard.setString("Original", forType: .string)
+
+        let insertionTask = Task {
+            try await service.insertText("Dictated text", preserveClipboard: true)
+        }
+
+        await fulfillment(of: [pasteStarted], timeout: 1.0)
+        XCTAssertEqual(pasteboard.string(forType: .string), "Dictated text")
+
+        // External app writes the identical text "Dictated text" with a new change count
+        pasteboard.clearContents()
+        pasteboard.setString("Dictated text", forType: .string)
+        let externalChangeCount = pasteboard.changeCount
+
+        _ = try await insertionTask.value
+
+        // Pasteboard should preserve the newer copy and not revert to "Original"
+        XCTAssertEqual(pasteboard.changeCount, externalChangeCount)
+        XCTAssertEqual(pasteboard.string(forType: .string), "Dictated text")
+    }
+
+    @MainActor
+    func testPreserveClipboardRestoresOriginallyEmptyClipboardWhenUnmodified() async throws {
+        let service = TextInsertionService()
+        let pasteboard = NSPasteboard.withUniqueName()
+        service.accessibilityGrantedOverride = true
+        service.pasteboardProvider = { pasteboard }
+        service.focusedTextElementOverride = { nil }
+        service.defaultPasteFallbackRestoreDelay = .milliseconds(40)
+
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.pasteboardItems?.isEmpty ?? true)
+
+        _ = try await service.insertText("Dictated text", preserveClipboard: true)
+
+        // Clipboard should be cleanly cleared back to empty state
+        XCTAssertTrue(pasteboard.pasteboardItems?.isEmpty ?? true)
+    }
+
+    @MainActor
     func testDeferredCopySelectionRestoresOriginalClipboardAfterVerifiedPaste() async throws {
         let service = TextInsertionService()
         let pasteboard = NSPasteboard.withUniqueName()

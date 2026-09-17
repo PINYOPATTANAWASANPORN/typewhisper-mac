@@ -347,9 +347,15 @@ final class TextInsertionService {
 
     final class DeferredClipboardRestore: @unchecked Sendable {
         fileprivate var savedItems: ClipboardSnapshot?
+        fileprivate var expectedChangeCount: Int?
 
-        fileprivate init(savedItems: ClipboardSnapshot) {
+        fileprivate init(savedItems: ClipboardSnapshot, expectedChangeCount: Int? = nil) {
             self.savedItems = savedItems
+            self.expectedChangeCount = expectedChangeCount
+        }
+
+        fileprivate func setExpectedChangeCount(_ count: Int) {
+            self.expectedChangeCount = count
         }
 
         fileprivate func consumeSavedItems() -> ClipboardSnapshot? {
@@ -529,8 +535,18 @@ final class TextInsertionService {
         Self.clipboardSnapshot(from: pasteboard.pasteboardItems ?? [])
     }
 
-    /// Restores previously saved clipboard contents.
-    func restoreClipboard(_ savedItems: ClipboardSnapshot, to pasteboard: NSPasteboard = .general) {
+    /// Restores previously saved clipboard contents if ownership is still valid.
+    func restoreClipboard(
+        _ savedItems: ClipboardSnapshot,
+        to pasteboard: NSPasteboard = .general,
+        expectedChangeCount: Int? = nil
+    ) {
+        if let expectedChangeCount, pasteboard.changeCount != expectedChangeCount {
+            logger.info(
+                "Skipping clipboard restore because pasteboard change count changed: expected=\(expectedChangeCount, privacy: .public), actual=\(pasteboard.changeCount, privacy: .public)"
+            )
+            return
+        }
         pasteboard.clearContents()
         if !savedItems.isEmpty {
             pasteboard.writeObjects(Self.pasteboardItems(from: savedItems))
@@ -538,8 +554,10 @@ final class TextInsertionService {
     }
 
     func restoreClipboardIfNeeded(_ deferredRestore: DeferredClipboardRestore?) {
-        guard let savedItems = deferredRestore?.consumeSavedItems() else { return }
-        restoreClipboard(savedItems, to: pasteboardProvider())
+        guard let deferred = deferredRestore else { return }
+        let expectedChangeCount = deferred.expectedChangeCount
+        guard let savedItems = deferred.consumeSavedItems() else { return }
+        restoreClipboard(savedItems, to: pasteboardProvider(), expectedChangeCount: expectedChangeCount)
     }
 
     func capturePasteVerificationState() -> PasteVerificationState {
@@ -929,8 +947,9 @@ final class TextInsertionService {
         pasteboard.clearContents()
         let generatedPayload = formattedClipboardPayload ?? ClipboardContentPayload(plainText: text)
         generatedPayload.write(to: pasteboard, markerTypes: generatedPasteboardMarkerTypes)
+        let payloadChangeCount = pasteboard.changeCount
         logger.info(
-            "insertText using synthetic paste: bundle=\(bundleId ?? "nil", privacy: .public), preserveClipboard=\(preserveClipboard, privacy: .public), changeCountBefore=\(initialChangeCount, privacy: .public), changeCountAfterWrite=\(pasteboard.changeCount, privacy: .public)"
+            "insertText using synthetic paste: bundle=\(bundleId ?? "nil", privacy: .public), preserveClipboard=\(preserveClipboard, privacy: .public), changeCountBefore=\(initialChangeCount, privacy: .public), changeCountAfterWrite=\(payloadChangeCount, privacy: .public)"
         )
         simulatePaste()
 
@@ -955,7 +974,7 @@ final class TextInsertionService {
                 )
             }
             try? await Task.sleep(for: restoreDelay)
-            restoreClipboard(savedItems, to: pasteboard)
+            restoreClipboard(savedItems, to: pasteboard, expectedChangeCount: payloadChangeCount)
             logger.info(
                 "insertText restored clipboard: bundle=\(bundleId ?? "nil", privacy: .public), changeCountAfterRestore=\(pasteboard.changeCount, privacy: .public)"
             )
@@ -1155,11 +1174,15 @@ final class TextInsertionService {
         if let textSelectionViaCopyOverride {
             let pasteboard = pasteboardProvider()
             let savedItems = saveClipboard(from: pasteboard)
+            let changeCountAtSave = pasteboard.changeCount
             guard let text = textSelectionViaCopyOverride(), !text.isEmpty else {
-                restoreClipboard(savedItems, to: pasteboard)
+                restoreClipboard(savedItems, to: pasteboard, expectedChangeCount: changeCountAtSave)
                 return nil
             }
-            let deferredRestore = DeferredClipboardRestore(savedItems: savedItems)
+            let deferredRestore = DeferredClipboardRestore(
+                savedItems: savedItems,
+                expectedChangeCount: pasteboard.changeCount
+            )
             if !deferClipboardRestore {
                 restoreClipboardIfNeeded(deferredRestore)
             }
@@ -1199,14 +1222,17 @@ final class TextInsertionService {
                 return nil
             }
 
-            let deferredRestore = DeferredClipboardRestore(savedItems: savedItems)
+            let deferredRestore = DeferredClipboardRestore(
+                savedItems: savedItems,
+                expectedChangeCount: pasteboard.changeCount
+            )
             if !deferClipboardRestore {
                 restoreClipboardIfNeeded(deferredRestore)
             }
 
             return CopiedTextSelection(text: text, deferredClipboardRestore: deferredRestore)
         }
-        restoreClipboard(savedItems, to: pasteboard)
+        restoreClipboard(savedItems, to: pasteboard, expectedChangeCount: initialChangeCount)
         return nil
     }
 
