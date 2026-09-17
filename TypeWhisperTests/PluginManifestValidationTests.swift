@@ -1580,6 +1580,48 @@ final class PluginDictionaryGuardTests: XCTestCase {
         )
     }
 
+    func testDeepgramSupportedLanguagesForNova3IncludesArabicKazakhAndHebrew() {
+        let nova3Languages = DeepgramPlugin.supportedLanguages(for: "nova-3")
+        XCTAssertTrue(nova3Languages.contains("ar"), "Nova-3 should support Arabic (ar)")
+        XCTAssertTrue(nova3Languages.contains("kk"), "Nova-3 should support Kazakh (kk)")
+        XCTAssertTrue(nova3Languages.contains("he"), "Nova-3 should support Hebrew (he)")
+        XCTAssertTrue(nova3Languages.contains("zh-HK"), "Nova-3 should support Cantonese (zh-HK)")
+        XCTAssertTrue(nova3Languages.contains("pt-PT"), "Nova-3 should support European Portuguese (pt-PT)")
+        XCTAssertTrue(nova3Languages.contains("en"), "Nova-3 should support English (en)")
+        XCTAssertTrue(nova3Languages.contains("de"), "Nova-3 should support German (de)")
+    }
+
+    func testDeepgramSupportedLanguagesForNova2ExcludesNova3OnlyLanguages() {
+        let nova2Languages = DeepgramPlugin.supportedLanguages(for: "nova-2")
+        XCTAssertFalse(nova2Languages.contains("ar"), "Nova-2 should not advertise Arabic (ar)")
+        XCTAssertFalse(nova2Languages.contains("kk"), "Nova-2 should not advertise Kazakh (kk)")
+        XCTAssertFalse(nova2Languages.contains("he"), "Nova-2 should not advertise Hebrew (he)")
+        XCTAssertTrue(nova2Languages.contains("zh-HK"), "Nova-2 should support Cantonese (zh-HK)")
+        XCTAssertTrue(nova2Languages.contains("pt-PT"), "Nova-2 should support European Portuguese (pt-PT)")
+        XCTAssertTrue(nova2Languages.contains("en"), "Nova-2 should support English (en)")
+        XCTAssertTrue(nova2Languages.contains("de"), "Nova-2 should support German (de)")
+    }
+
+    func testDeepgramDynamicSupportedLanguagesFollowsSelectedModel() {
+        let plugin = DeepgramPlugin()
+
+        plugin.selectModel("nova-3")
+        XCTAssertTrue(plugin.supportedLanguages.contains("ar"))
+        XCTAssertTrue(plugin.supportedLanguages.contains("kk"))
+        XCTAssertTrue(plugin.supportedLanguages.contains("he"))
+
+        plugin.selectModel("nova-2")
+        XCTAssertFalse(plugin.supportedLanguages.contains("ar"))
+        XCTAssertFalse(plugin.supportedLanguages.contains("kk"))
+        XCTAssertFalse(plugin.supportedLanguages.contains("he"))
+        XCTAssertTrue(plugin.supportedLanguages.contains("en"))
+
+        plugin.selectModel("nova-3")
+        XCTAssertTrue(plugin.supportedLanguages.contains("ar"))
+        XCTAssertTrue(plugin.supportedLanguages.contains("kk"))
+        XCTAssertTrue(plugin.supportedLanguages.contains("he"))
+    }
+
     func testDeepgramSupportedLanguagesIncludeMultilingualCodeSwitchingMode() {
         XCTAssertTrue(DeepgramPlugin().supportedLanguages.contains("multi"))
     }
