@@ -653,14 +653,34 @@ final class DeepgramPlugin: NSObject,
     var dictionaryTermsSupport: DictionaryTermsSupport { .supported }
     var dictionaryTermsBudget: DictionaryTermsBudget { DictionaryTermsBudget(maxTerms: Self.maxDictionaryTerms) }
 
+    static let nova2SupportedLanguages: [String] = [
+        "bg", "ca", "cs", "da", "de", "de-CH", "el", "en", "en-AU", "en-GB",
+        "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr", "fr-CA",
+        "hi", "hu", "id", "it", "ja", "ko", "lt", "lv", "multi", "ms", "nl",
+        "nl-BE", "no", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sv", "th",
+        "tr", "uk", "vi", "zh", "zh-CN", "zh-TW",
+    ]
+
+    static let nova3SupportedLanguages: [String] = [
+        "ar", "bg", "ca", "cs", "da", "de", "de-CH", "el", "en", "en-AU",
+        "en-GB", "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr",
+        "fr-CA", "hi", "hu", "id", "it", "ja", "kk", "ko", "lt", "lv",
+        "multi", "ms", "nl", "nl-BE", "no", "pl", "pt", "pt-BR", "ro", "ru",
+        "sk", "sv", "th", "tr", "uk", "vi", "zh", "zh-CN", "zh-TW",
+    ]
+
+    static func supportedLanguages(for modelId: String?) -> [String] {
+        guard let modelId = modelId?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
+            return nova3SupportedLanguages
+        }
+        if modelId.hasPrefix("nova-2") {
+            return nova2SupportedLanguages
+        }
+        return nova3SupportedLanguages
+    }
+
     var supportedLanguages: [String] {
-        [
-            "bg", "ca", "cs", "da", "de", "de-CH", "el", "en", "en-AU", "en-GB",
-            "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr", "fr-CA",
-            "hi", "hu", "id", "it", "ja", "ko", "lt", "lv", "multi", "ms", "nl",
-            "nl-BE", "no", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sv", "th",
-            "tr", "uk", "vi", "zh", "zh-CN", "zh-TW",
-        ]
+        Self.supportedLanguages(for: _selectedModelId)
     }
 
     // MARK: - URL Helpers
