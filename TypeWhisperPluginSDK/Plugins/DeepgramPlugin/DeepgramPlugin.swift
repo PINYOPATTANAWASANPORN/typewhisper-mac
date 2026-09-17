@@ -657,16 +657,16 @@ final class DeepgramPlugin: NSObject,
         "bg", "ca", "cs", "da", "de", "de-CH", "el", "en", "en-AU", "en-GB",
         "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr", "fr-CA",
         "hi", "hu", "id", "it", "ja", "ko", "lt", "lv", "multi", "ms", "nl",
-        "nl-BE", "no", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sv", "th",
-        "tr", "uk", "vi", "zh", "zh-CN", "zh-TW",
+        "nl-BE", "no", "pl", "pt", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv",
+        "th", "tr", "uk", "vi", "zh", "zh-CN", "zh-HK", "zh-TW",
     ]
 
     static let nova3SupportedLanguages: [String] = [
         "ar", "bg", "ca", "cs", "da", "de", "de-CH", "el", "en", "en-AU",
         "en-GB", "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr",
-        "fr-CA", "hi", "hu", "id", "it", "ja", "kk", "ko", "lt", "lv",
-        "multi", "ms", "nl", "nl-BE", "no", "pl", "pt", "pt-BR", "ro", "ru",
-        "sk", "sv", "th", "tr", "uk", "vi", "zh", "zh-CN", "zh-TW",
+        "fr-CA", "he", "hi", "hu", "id", "it", "ja", "kk", "ko", "lt", "lv",
+        "multi", "ms", "nl", "nl-BE", "no", "pl", "pt", "pt-BR", "pt-PT", "ro",
+        "ru", "sk", "sv", "th", "tr", "uk", "vi", "zh", "zh-CN", "zh-HK", "zh-TW",
     ]
 
     static func supportedLanguages(for modelId: String?) -> [String] {
