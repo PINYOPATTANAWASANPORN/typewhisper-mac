@@ -299,6 +299,52 @@ final class ModelManagerLiveSessionModelOverrideTests: XCTestCase {
         XCTAssertFalse(plugin.usedBatchTranscribe)
     }
 
+    func testLiveSessionNormalizesLanguageAgainstModelOverrideFromNova2ToNova3() async throws {
+        let appSupportDirectory = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.remove(appSupportDirectory) }
+
+        let plugin = LiveModelOverrideTranscriptionPlugin()
+        plugin.selectModel("alpha")
+        let modelManager = installLivePlugin(plugin, appSupportDirectory: appSupportDirectory)
+
+        // alpha only supports "en". Override to beta (supports "ar", "en") and request "ar".
+        // With model-override-aware normalization, "ar" is retained rather than falling back to .auto.
+        let sessionHandle = try await modelManager.createLiveTranscriptionSession(
+            languageSelection: .exact("ar"),
+            task: .transcribe,
+            cloudModelOverride: "beta",
+            onProgress: { _ in true }
+        )
+        let handle = try XCTUnwrap(sessionHandle)
+        XCTAssertEqual(plugin.selectedModelId, "beta")
+
+        await modelManager.cancelLiveTranscriptionSession(handle)
+        XCTAssertEqual(plugin.selectedModelId, "alpha")
+    }
+
+    func testLiveSessionNormalizesLanguageAgainstModelOverrideFromNova3ToNova2() async throws {
+        let appSupportDirectory = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.remove(appSupportDirectory) }
+
+        let plugin = LiveModelOverrideTranscriptionPlugin()
+        plugin.selectModel("beta")
+        let modelManager = installLivePlugin(plugin, appSupportDirectory: appSupportDirectory)
+
+        // beta supports "ar", but override to alpha (only supports "en").
+        // "ar" must be normalized against alpha's capabilities, falling back safely.
+        let sessionHandle = try await modelManager.createLiveTranscriptionSession(
+            languageSelection: .exact("ar"),
+            task: .transcribe,
+            cloudModelOverride: "alpha",
+            onProgress: { _ in true }
+        )
+        let handle = try XCTUnwrap(sessionHandle)
+        XCTAssertEqual(plugin.selectedModelId, "alpha")
+
+        await modelManager.cancelLiveTranscriptionSession(handle)
+        XCTAssertEqual(plugin.selectedModelId, "beta")
+    }
+
     private func installLivePlugin(
         _ plugin: LiveModelOverrideTranscriptionPlugin,
         appSupportDirectory: URL
@@ -687,7 +733,12 @@ private final class LegacyModelManagerTranscriptionPlugin: NSObject, Transcripti
     var transcriptionModels: [PluginModelInfo] { [] }
     var supportsTranslation: Bool { false }
     var supportsStreaming: Bool { true }
-    var supportedLanguages: [String] { ["en"] }
+    var supportedLanguages: [String] {
+        if currentModelId == "beta" {
+            return ["ar", "en"]
+        }
+        return ["en"]
+    }
 
     func activate(host: HostServices) {}
     func deactivate() {}
