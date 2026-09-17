@@ -730,6 +730,41 @@ final class CLISupportTests: XCTestCase {
     }
 
     @MainActor
+    func testSupporterValidationPreservesLocalStateWhenKeychainIsTemporarilyUnavailable() async throws {
+        let (defaults, suiteName) = try makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let failingKeychainServiceName = "TypeWhisperTests.LockedKeychain.\(UUID().uuidString)"
+
+        // Store an unreadable / malformed payload in keychain to trigger read failure (LicenseError.keychainUnavailable)
+        Self.storeKeychainValue(
+            "unreadable-corrupt-payload",
+            service: failingKeychainServiceName,
+            account: "polar-supporter"
+        )
+        defer { Self.deleteKeychainValue(service: failingKeychainServiceName, account: "polar-supporter") }
+
+        let service = LicenseService(
+            defaults: defaults,
+            keychainServiceName: failingKeychainServiceName,
+            dataTransport: { _ in
+                XCTFail("Validation network transport should not be invoked on keychain failure")
+                return (Data(), Self.httpResponse(url: URL(string: "https://api.polar.sh")!, statusCode: 500))
+            }
+        )
+
+        service.supporterStatus = .active
+        service.supporterTier = .gold
+        defaults.set(Date.distantPast, forKey: UserDefaultsKeys.lastSupporterValidation)
+
+        await service.validateSupporterIfNeeded()
+
+        // Active state and tier must be preserved during transient keychain failures
+        XCTAssertEqual(service.supporterStatus, .active)
+        XCTAssertEqual(service.supporterTier, .gold)
+    }
+
+    @MainActor
     func testSupporterValidationClearsLocalStateWhenPolarActivationIsMissing() async throws {
         let (defaults, suiteName) = try makeIsolatedDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }

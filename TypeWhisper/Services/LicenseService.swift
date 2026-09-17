@@ -520,7 +520,16 @@ final class LicenseService: ObservableObject {
     }
 
     func validateSupporterIfNeeded() async {
-        guard let (key, activationId) = loadSupporterFromKeychain() else {
+        let storedSupporter: (key: String, activationId: String)?
+        do {
+            storedSupporter = try readSupporterFromKeychain()
+        } catch {
+            // A temporarily unavailable Keychain must not erase cached supporter entitlement state.
+            logger.warning("Supporter validation deferred because Keychain is unavailable")
+            return
+        }
+
+        guard let (key, activationId) = storedSupporter else {
             if supporterStatus != .unlicensed || supporterTier != nil {
                 supporterStatus = .unlicensed
                 supporterTier = nil
@@ -955,6 +964,10 @@ final class LicenseService: ObservableObject {
     }
 
     private func loadSupporterFromKeychain() -> (key: String, activationId: String)? {
+        try? readSupporterFromKeychain()
+    }
+
+    private func readSupporterFromKeychain() throws -> (key: String, activationId: String)? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -964,8 +977,9 @@ final class LicenseService: ObservableObject {
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess, let data = result as? Data else {
-            return nil
+            throw LicenseError.keychainUnavailable
         }
 
         if let payload = try? JSONDecoder().decode(LicenseKeychainPayload.self, from: data) {
@@ -980,7 +994,7 @@ final class LicenseService: ObservableObject {
             }
         }
 
-        return nil
+        throw LicenseError.keychainUnavailable
     }
 
     private func removeSupporterFromKeychain() {
