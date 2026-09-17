@@ -317,6 +317,7 @@ final class ModelManagerLiveSessionModelOverrideTests: XCTestCase {
         )
         let handle = try XCTUnwrap(sessionHandle)
         XCTAssertEqual(plugin.selectedModelId, "beta")
+        XCTAssertEqual(plugin.receivedLanguage, "ar")
 
         await modelManager.cancelLiveTranscriptionSession(handle)
         XCTAssertEqual(plugin.selectedModelId, "alpha")
@@ -331,7 +332,7 @@ final class ModelManagerLiveSessionModelOverrideTests: XCTestCase {
         let modelManager = installLivePlugin(plugin, appSupportDirectory: appSupportDirectory)
 
         // beta supports "ar", but override to alpha (only supports "en").
-        // "ar" must be normalized against alpha's capabilities, falling back safely.
+        // "ar" must be normalized against alpha's capabilities, falling back safely to nil (.auto).
         let sessionHandle = try await modelManager.createLiveTranscriptionSession(
             languageSelection: .exact("ar"),
             task: .transcribe,
@@ -340,6 +341,7 @@ final class ModelManagerLiveSessionModelOverrideTests: XCTestCase {
         )
         let handle = try XCTUnwrap(sessionHandle)
         XCTAssertEqual(plugin.selectedModelId, "alpha")
+        XCTAssertNil(plugin.receivedLanguage)
 
         await modelManager.cancelLiveTranscriptionSession(handle)
         XCTAssertEqual(plugin.selectedModelId, "beta")
@@ -777,6 +779,7 @@ private final class LiveModelOverrideTranscriptionPlugin: NSObject, Transcriptio
     ]
     private var modelAliases: [String: String] = [:]
     private var currentModelId: String? = "alpha"
+    private(set) var receivedLanguage: String?
     private(set) var receivedDictionaryHints: [PluginDictionaryTermHint] = []
 
     required override init() {
@@ -822,7 +825,8 @@ private final class LiveModelOverrideTranscriptionPlugin: NSObject, Transcriptio
         prompt: String?,
         onProgress: @Sendable @escaping (String) -> Bool
     ) async throws -> any LiveTranscriptionSession {
-        LiveModelOverrideSession(modelId: currentModelId)
+        receivedLanguage = language
+        return LiveModelOverrideSession(modelId: currentModelId)
     }
 
     func createLiveTranscriptionSession(
@@ -832,6 +836,7 @@ private final class LiveModelOverrideTranscriptionPlugin: NSObject, Transcriptio
         dictionaryTermHints: [PluginDictionaryTermHint],
         onProgress: @Sendable @escaping (String) -> Bool
     ) async throws -> any LiveTranscriptionSession {
+        receivedLanguage = language
         receivedDictionaryHints = dictionaryTermHints
         return LiveModelOverrideSession(modelId: currentModelId)
     }
