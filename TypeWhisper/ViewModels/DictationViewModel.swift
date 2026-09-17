@@ -3939,7 +3939,7 @@ enum DictationInsertionTextFormatter {
         if isHighConfidenceMidSentenceInsertion(boundaries) {
             result = lowercasingFirstWordIfSafe(result)
         }
-        if shouldStripFinalPeriod(boundaries) {
+        if shouldStripFinalPeriod(boundaries) || isStandaloneNonProseValue(result, boundaries: boundaries) {
             result = strippingSingleFinalPeriod(result)
         }
 
@@ -4145,6 +4145,61 @@ enum DictationInsertionTextFormatter {
     private static let cjkScriptCharacterRegex = try? NSRegularExpression(
         pattern: #"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]"#
     )
+    private static let emailPatternRegex = try? NSRegularExpression(
+        pattern: #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\.?$"#
+    )
+    private static let urlPatternRegex = try? NSRegularExpression(
+        pattern: #"^(?:https?://|www\.)[^\s]+\.?$"#,
+        options: .caseInsensitive
+    )
+    private static let numericPatternRegex = try? NSRegularExpression(
+        pattern: #"^[+-]?(?:\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,]\d+)?\.?$"#
+    )
+    private static let versionPatternRegex = try? NSRegularExpression(
+        pattern: #"^v?\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?\.?$"#
+    )
+    private static let phonePatternRegex = try? NSRegularExpression(
+        pattern: #"^(?:\+?[0-9]{1,4}?[-.\s]?)?(?:\([0-9]{1,3}?\)|[0-9]{1,3}?)[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,9}\.?$"#
+    )
+    private static let preservedAbbreviations: Set<String> = [
+        "dr.", "mr.", "mrs.", "ms.", "prof.", "sr.", "jr.",
+        "u.s.", "u.k.", "e.g.", "i.e.", "etc.", "vs.", "fig.", "no."
+    ]
+
+    static func isStandaloneNonProseValue(_ text: String, boundaries: InsertionBoundaries) -> Bool {
+        guard boundaries.previousNonWhitespaceCharacter == nil,
+              boundaries.nextNonWhitespaceCharacter == nil else {
+            return false
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasSuffix("."), !trimmed.hasSuffix("..") else {
+            return false
+        }
+        if preservedAbbreviations.contains(trimmed.lowercased()) {
+            return false
+        }
+
+        let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
+        if emailPatternRegex?.firstMatch(in: trimmed, range: range) != nil {
+            return true
+        }
+        if urlPatternRegex?.firstMatch(in: trimmed, range: range) != nil {
+            return true
+        }
+        if !trimmed.contains(" ") && numericPatternRegex?.firstMatch(in: trimmed, range: range) != nil {
+            return true
+        }
+        if versionPatternRegex?.firstMatch(in: trimmed, range: range) != nil {
+            return true
+        }
+        if phonePatternRegex?.firstMatch(in: trimmed, range: range) != nil {
+            let digitCount = trimmed.unicodeScalars.filter { CharacterSet.decimalDigits.contains($0) }.count
+            if digitCount >= 7 {
+                return true
+            }
+        }
+        return false
+    }
 
     private static func isWordLike(_ character: Character) -> Bool {
         character.unicodeScalars.contains { CharacterSet.alphanumerics.contains($0) }

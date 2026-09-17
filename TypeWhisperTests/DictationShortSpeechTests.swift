@@ -576,4 +576,111 @@ final class DictationInsertionTextFormatterTests: XCTestCase {
             " really? "
         )
     }
+
+    func testSmartInsertionStripsPeriodFromStandaloneEmail() {
+        let context = TextInsertionService.InsertionContext(
+            value: "",
+            selectedRange: NSRange(location: 0, length: 0),
+            selectedText: nil,
+            previousCharacter: nil,
+            nextCharacter: nil
+        )
+
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("user@example.com.", insertionContext: context),
+            "user@example.com"
+        )
+    }
+
+    func testSmartInsertionStripsPeriodFromStandaloneURL() {
+        let context = TextInsertionService.InsertionContext(
+            value: "",
+            selectedRange: NSRange(location: 0, length: 0),
+            selectedText: nil,
+            previousCharacter: nil,
+            nextCharacter: nil
+        )
+
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("https://typewhisper.com.", insertionContext: context),
+            "https://typewhisper.com"
+        )
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("www.typewhisper.com.", insertionContext: context),
+            "www.typewhisper.com"
+        )
+    }
+
+    func testSmartInsertionStripsPeriodFromStandaloneNumeric() {
+        let context = TextInsertionService.InsertionContext(
+            value: "",
+            selectedRange: NSRange(location: 0, length: 0),
+            selectedText: nil,
+            previousCharacter: nil,
+            nextCharacter: nil
+        )
+
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("42.", insertionContext: context),
+            "42"
+        )
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("1,000.50.", insertionContext: context),
+            "1,000.50"
+        )
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("1.000,50.", insertionContext: context),
+            "1.000,50"
+        )
+    }
+
+    func testSmartInsertionStripsPeriodFromStandalonePhoneNumber() {
+        let context = TextInsertionService.InsertionContext(
+            value: "",
+            selectedRange: NSRange(location: 0, length: 0),
+            selectedText: nil,
+            previousCharacter: nil,
+            nextCharacter: nil
+        )
+
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("+1 (555) 234-5678.", insertionContext: context),
+            "+1 (555) 234-5678"
+        )
+    }
+
+    func testSmartInsertionPreservesPeriodOnStandaloneSentence() {
+        let context = TextInsertionService.InsertionContext(
+            value: "",
+            selectedRange: NSRange(location: 0, length: 0),
+            selectedText: nil,
+            previousCharacter: nil,
+            nextCharacter: nil
+        )
+
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("This is a complete sentence.", insertionContext: context),
+            "This is a complete sentence."
+        )
+    }
+
+    func testSmartInsertionPreservesPeriodOnAbbreviations() {
+        let context = TextInsertionService.InsertionContext(
+            value: "",
+            selectedRange: NSRange(location: 0, length: 0),
+            selectedText: nil,
+            previousCharacter: nil,
+            nextCharacter: nil
+        )
+
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("Dr.", insertionContext: context),
+            "Dr."
+        )
+        XCTAssertEqual(
+            DictationInsertionTextFormatter.textForInsertion("U.S.", insertionContext: context),
+            "U.S."
+        )
+    }
+
 }
