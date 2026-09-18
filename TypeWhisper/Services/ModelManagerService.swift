@@ -642,12 +642,17 @@ final class ModelManagerService: ObservableObject {
             }
         }
 
+        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
+        let preparationLanguage = preparationRequestedLanguage(
+            for: languageSelection,
+            runtimeSelection: runtimeSelection,
+            plugin: plugin
+        )
         let overrideRestoreId = try await prepareEngineForTranscription(
             plugin,
-            requestedLanguage: languageSelection.requestedLanguage,
+            requestedLanguage: preparationLanguage,
             cloudModelOverride: cloudModelOverride
         )
-        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
 
         guard plugin.isConfigured else {
             restoreCloudModelOverride(plugin: plugin, previousId: overrideRestoreId)
@@ -808,12 +813,17 @@ final class ModelManagerService: ObservableObject {
             endAutoUnloadProtectedUse(of: plugin)
         }
 
+        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
+        let preparationLanguage = preparationRequestedLanguage(
+            for: languageSelection,
+            runtimeSelection: runtimeSelection,
+            plugin: plugin
+        )
         overrideRestoreId = try await prepareEngineForTranscription(
             plugin,
-            requestedLanguage: languageSelection.requestedLanguage,
+            requestedLanguage: preparationLanguage,
             cloudModelOverride: cloudModelOverride
         )
-        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
 
         guard plugin.isConfigured else {
             throw modelNotLoadedError(for: plugin)
@@ -959,12 +969,17 @@ final class ModelManagerService: ObservableObject {
             endAutoUnloadProtectedUse(of: plugin)
         }
 
+        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
+        let preparationLanguage = preparationRequestedLanguage(
+            for: languageSelection,
+            runtimeSelection: runtimeSelection,
+            plugin: plugin
+        )
         overrideRestoreId = try await prepareEngineForTranscription(
             plugin,
-            requestedLanguage: languageSelection.requestedLanguage,
+            requestedLanguage: preparationLanguage,
             cloudModelOverride: cloudModelOverride
         )
-        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
 
         guard plugin.isConfigured else {
             throw modelNotLoadedError(for: plugin)

@@ -654,19 +654,27 @@ final class DeepgramPlugin: NSObject,
     var dictionaryTermsBudget: DictionaryTermsBudget { DictionaryTermsBudget(maxTerms: Self.maxDictionaryTerms) }
 
     static let nova2SupportedLanguages: [String] = [
-        "bg", "ca", "cs", "da", "de", "de-CH", "el", "en", "en-AU", "en-GB",
-        "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr", "fr-CA",
-        "hi", "hu", "id", "it", "ja", "ko", "lt", "lv", "multi", "ms", "nl",
-        "nl-BE", "no", "pl", "pt", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv",
-        "th", "tr", "uk", "vi", "zh", "zh-CN", "zh-HK", "zh-TW",
+        "bg", "ca", "cs", "da", "da-DK", "de", "de-CH", "el", "en", "en-AU",
+        "en-GB", "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr",
+        "fr-CA", "hi", "hu", "id", "it", "ja", "ko", "ko-KR", "lt", "lv",
+        "multi", "ms", "nl", "nl-BE", "no", "pl", "pt", "pt-BR", "pt-PT", "ro",
+        "ru", "sk", "sv", "sv-SE", "th", "th-TH", "tr", "uk", "vi", "zh",
+        "zh-CN", "zh-HK", "zh-Hans", "zh-Hant", "zh-TW",
     ]
 
     static let nova3SupportedLanguages: [String] = [
-        "ar", "bg", "ca", "cs", "da", "de", "de-CH", "el", "en", "en-AU",
-        "en-GB", "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fi", "fr",
-        "fr-CA", "he", "hi", "hu", "id", "it", "ja", "kk", "ko", "lt", "lv",
-        "multi", "ms", "nl", "nl-BE", "no", "pl", "pt", "pt-BR", "pt-PT", "ro",
-        "ru", "sk", "sv", "th", "tr", "uk", "vi", "zh", "zh-CN", "zh-HK", "zh-TW",
+        "af", "af-ZA", "ar", "ar-AE", "ar-DZ", "ar-EG", "ar-IQ", "ar-IR", "ar-JO",
+        "ar-KW", "ar-LB", "ar-MA", "ar-PS", "ar-QA", "ar-SA", "ar-SD", "ar-SY",
+        "ar-TD", "ar-TN", "as", "as-IN", "be", "bg", "bn", "bs", "ca", "cs",
+        "cs-CZ", "da", "da-DK", "de", "de-CH", "el", "en", "en-AU", "en-GB",
+        "en-IN", "en-NZ", "en-US", "es", "es-419", "et", "fa", "fi", "fr",
+        "fr-CA", "gu", "gu-IN", "he", "hi", "hr", "hu", "hy", "id", "it",
+        "ja", "ka", "ka-GE", "kk", "kk-KZ", "kn", "ko", "ko-KR", "lt", "lv",
+        "mk", "mn", "mr", "ms", "multi", "ne", "nl", "nl-BE", "no", "pa",
+        "pa-IN", "pl", "ps", "ps-AF", "pt", "pt-BR", "pt-PT", "ro", "ru",
+        "sk", "sl", "sr", "sv", "sv-SE", "ta", "te", "th", "th-TH", "tl",
+        "tr", "tr-TR", "uk", "ur", "vi", "zh", "zh-CN", "zh-HK", "zh-Hans",
+        "zh-Hant", "zh-TW",
     ]
 
     static func supportedLanguages(for modelId: String?) -> [String] {

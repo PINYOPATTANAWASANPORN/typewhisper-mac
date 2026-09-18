@@ -659,7 +659,12 @@ private final class StructuredDictionaryHintModelManagerPlugin: NSObject, Struct
     var selectedModelId: String? { nil }
     var transcriptionModels: [PluginModelInfo] { [] }
     var supportsTranslation: Bool { false }
-    var supportedLanguages: [String] { ["en"] }
+    var supportedLanguages: [String] {
+        if currentModelId == "beta" {
+            return ["ar", "en"]
+        }
+        return ["en"]
+    }
 
     func activate(host: HostServices) {}
     func deactivate() {}
@@ -735,12 +740,7 @@ private final class LegacyModelManagerTranscriptionPlugin: NSObject, Transcripti
     var transcriptionModels: [PluginModelInfo] { [] }
     var supportsTranslation: Bool { false }
     var supportsStreaming: Bool { true }
-    var supportedLanguages: [String] {
-        if currentModelId == "beta" {
-            return ["ar", "en"]
-        }
-        return ["en"]
-    }
+    var supportedLanguages: [String] { ["en"] }
 
     func activate(host: HostServices) {}
     func deactivate() {}
