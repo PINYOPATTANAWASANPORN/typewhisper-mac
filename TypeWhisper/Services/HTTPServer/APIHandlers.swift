@@ -394,6 +394,8 @@ final class APIHandlers: @unchecked Sendable {
             )
 
             var finalText = result.text
+            var finalSegments = result.segments
+            var responseLanguage = result.detectedLanguage
             if let targetCode = options.targetLanguage {
                 #if canImport(Translation)
                 if #available(macOS 15, *), let ts = translationService as? TranslationService {
@@ -419,6 +421,34 @@ final class APIHandlers: @unchecked Sendable {
                             to: target,
                             source: sourceLanguage
                         )
+                        if !result.segments.isEmpty {
+                            var translatedSegments: [TranscriptionSegment] = []
+                            translatedSegments.reserveCapacity(result.segments.count)
+                            for seg in result.segments {
+                                let trimmedSegText = seg.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                                let translatedSegText: String
+                                if trimmedSegText.isEmpty {
+                                    translatedSegText = seg.text
+                                } else {
+                                    translatedSegText = try await ts.translate(
+                                        text: seg.text,
+                                        to: target,
+                                        source: sourceLanguage
+                                    )
+                                }
+                                translatedSegments.append(
+                                    TranscriptionSegment(
+                                        text: translatedSegText,
+                                        start: seg.start,
+                                        end: seg.end,
+                                        speakerLabel: seg.speakerLabel,
+                                        speakerConfidence: seg.speakerConfidence
+                                    )
+                                )
+                            }
+                            finalSegments = translatedSegments
+                        }
+                        responseLanguage = targetNormalized
                     } else {
                         apiLogger.error("API translation target language invalid: \(targetCode, privacy: .public)")
                     }
@@ -477,7 +507,7 @@ final class APIHandlers: @unchecked Sendable {
                     let segments: [SegmentEntry]
                 }
 
-                let segments = result.segments.map {
+                let segments = finalSegments.map {
                     SegmentEntry(
                         start: $0.start,
                         end: $0.end,
@@ -489,7 +519,7 @@ final class APIHandlers: @unchecked Sendable {
 
                 return .json(VerboseResponse(
                     text: finalText,
-                    language: result.detectedLanguage,
+                    language: responseLanguage,
                     duration: result.duration,
                     processing_time: result.processingTime,
                     engine: result.engineUsed,
@@ -508,7 +538,7 @@ final class APIHandlers: @unchecked Sendable {
 
                 return .json(TranscribeResponse(
                     text: finalText,
-                    language: result.detectedLanguage,
+                    language: responseLanguage,
                     duration: result.duration,
                     processing_time: result.processingTime,
                     engine: result.engineUsed,

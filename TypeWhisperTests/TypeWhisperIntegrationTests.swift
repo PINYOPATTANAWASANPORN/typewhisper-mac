@@ -13465,6 +13465,19 @@ final class TypeWhisperIntegrationTests: XCTestCase {
         XCTAssertEqual(response["text"] as? String, "transcribed")
     }
 
+    func testTranslationServiceNormalizesTargetLanguageCode() {
+        let normalizedDe = TranslationService.normalizedLanguageIdentifier(from: "de")
+        XCTAssertEqual(normalizedDe, "de")
+        let normalizedDeDe = TranslationService.normalizedLanguageIdentifier(from: "de-DE")
+        XCTAssertEqual(normalizedDeDe, "de")
+        let normalizedGerman = TranslationService.normalizedLanguageIdentifier(from: "german")
+        XCTAssertEqual(normalizedGerman, "de")
+        let normalizedZhHans = TranslationService.normalizedLanguageIdentifier(from: "zh-Hans")
+        XCTAssertEqual(normalizedZhHans, "zh-Hans")
+        let normalizedAuto = TranslationService.normalizedLanguageIdentifier(from: "auto")
+        XCTAssertNil(normalizedAuto)
+    }
+
     @MainActor
     func testTranscribeWithoutOverrideLeavesSelectionUntouched() async throws {
         let selectedEngineKey = UserDefaultsKeys.selectedEngine
