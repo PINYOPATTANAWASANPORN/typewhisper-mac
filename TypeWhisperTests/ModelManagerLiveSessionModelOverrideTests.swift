@@ -299,6 +299,69 @@ final class ModelManagerLiveSessionModelOverrideTests: XCTestCase {
         XCTAssertFalse(plugin.usedBatchTranscribe)
     }
 
+    func testLiveSessionNormalizesLanguageAgainstModelOverrideFromNova2ToNova3() async throws {
+        let appSupportDirectory = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.remove(appSupportDirectory) }
+
+        let plugin = LiveModelOverrideTranscriptionPlugin()
+        plugin.selectModel("alpha")
+        let modelManager = installLivePlugin(plugin, appSupportDirectory: appSupportDirectory)
+
+        // alpha only supports "en". Override to beta (supports "ar", "en") and request "ar".
+        // With model-override-aware normalization, "ar" is retained rather than falling back to .auto.
+        let sessionHandle = try await modelManager.createLiveTranscriptionSession(
+            languageSelection: .exact("ar"),
+            task: .transcribe,
+            cloudModelOverride: "beta",
+            onProgress: { _ in true }
+        )
+        let handle = try XCTUnwrap(sessionHandle)
+        XCTAssertEqual(plugin.selectedModelId, "beta")
+        XCTAssertEqual(plugin.receivedLanguage, "ar")
+
+        await modelManager.cancelLiveTranscriptionSession(handle)
+        XCTAssertEqual(plugin.selectedModelId, "alpha")
+    }
+
+    func testLiveSessionNormalizesLanguageAgainstModelOverrideFromNova3ToNova2() async throws {
+        let appSupportDirectory = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.remove(appSupportDirectory) }
+
+        let plugin = LiveModelOverrideTranscriptionPlugin()
+        plugin.selectModel("beta")
+        let modelManager = installLivePlugin(plugin, appSupportDirectory: appSupportDirectory)
+
+        // beta supports "ar", but override to alpha (only supports "en").
+        // "ar" must be normalized against alpha's capabilities, falling back safely to nil (.auto).
+        let sessionHandle = try await modelManager.createLiveTranscriptionSession(
+            languageSelection: .exact("ar"),
+            task: .transcribe,
+            cloudModelOverride: "alpha",
+            onProgress: { _ in true }
+        )
+        let handle = try XCTUnwrap(sessionHandle)
+        XCTAssertEqual(plugin.selectedModelId, "alpha")
+        XCTAssertNil(plugin.receivedLanguage)
+
+        await modelManager.cancelLiveTranscriptionSession(handle)
+        XCTAssertEqual(plugin.selectedModelId, "beta")
+    }
+
+
+    func testTranscriptionEngineErrorDistinguishesUnavailableModelsFromGeneralLoadFailures() {
+        let noMethodError = TranscriptionEngineError.noMethodSelected
+        XCTAssertTrue(noMethodError.localizedDescription.contains("Settings > Integrations"))
+
+        let unavailableError = TranscriptionEngineError.modelUnavailable("Model 'qwen-3' is incompatible.")
+        XCTAssertTrue(unavailableError.localizedDescription.contains("unavailable"))
+
+        let genericNotLoaded = TranscriptionEngineError.modelNotLoaded
+        XCTAssertTrue(genericNotLoaded.localizedDescription.contains("download and select a model"))
+
+        let loadFailed = TranscriptionEngineError.modelLoadFailed("OOM")
+        XCTAssertTrue(loadFailed.localizedDescription.contains("Failed to load model"))
+    }
+
     private func installLivePlugin(
         _ plugin: LiveModelOverrideTranscriptionPlugin,
         appSupportDirectory: URL
@@ -726,6 +789,7 @@ private final class LiveModelOverrideTranscriptionPlugin: NSObject, Transcriptio
     ]
     private var modelAliases: [String: String] = [:]
     private var currentModelId: String? = "alpha"
+    private(set) var receivedLanguage: String?
     private(set) var receivedDictionaryHints: [PluginDictionaryTermHint] = []
 
     required override init() {
@@ -745,7 +809,12 @@ private final class LiveModelOverrideTranscriptionPlugin: NSObject, Transcriptio
     var transcriptionModels: [PluginModelInfo] { models }
     var supportsTranslation: Bool { false }
     var supportsStreaming: Bool { true }
-    var supportedLanguages: [String] { ["en"] }
+    var supportedLanguages: [String] {
+        if currentModelId == "beta" {
+            return ["ar", "en"]
+        }
+        return ["en"]
+    }
 
     func activate(host: HostServices) {}
     func deactivate() {}
@@ -771,7 +840,8 @@ private final class LiveModelOverrideTranscriptionPlugin: NSObject, Transcriptio
         prompt: String?,
         onProgress: @Sendable @escaping (String) -> Bool
     ) async throws -> any LiveTranscriptionSession {
-        LiveModelOverrideSession(modelId: currentModelId)
+        receivedLanguage = language
+        return LiveModelOverrideSession(modelId: currentModelId)
     }
 
     func createLiveTranscriptionSession(
@@ -781,6 +851,7 @@ private final class LiveModelOverrideTranscriptionPlugin: NSObject, Transcriptio
         dictionaryTermHints: [PluginDictionaryTermHint],
         onProgress: @Sendable @escaping (String) -> Bool
     ) async throws -> any LiveTranscriptionSession {
+        receivedLanguage = language
         receivedDictionaryHints = dictionaryTermHints
         return LiveModelOverrideSession(modelId: currentModelId)
     }

@@ -3,8 +3,10 @@ import Combine
 import TypeWhisperPluginSDK
 
 enum TranscriptionEngineError: LocalizedError {
+    case noMethodSelected
     case modelNotLoaded
     case appleSpeechModelNotLoaded
+    case modelUnavailable(String)
     case unsupportedTask(String)
     case transcriptionFailed(String)
     case modelLoadFailed(String)
@@ -12,10 +14,14 @@ enum TranscriptionEngineError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .noMethodSelected:
+            "No transcription method or model has been prepared. Open Settings > Integrations to select and configure an engine."
         case .modelNotLoaded:
             "No model loaded. Please download and select a model first."
         case .appleSpeechModelNotLoaded:
             "Apple Speech needs a language model. Open Integrations > Apple Speech and select a language model, or choose a specific transcription language."
+        case .modelUnavailable(let detail):
+            "The selected model is unavailable: \(detail)"
         case .unsupportedTask(let detail):
             "Unsupported task: \(detail)"
         case .transcriptionFailed(let detail):
@@ -642,10 +648,10 @@ final class ModelManagerService: ObservableObject {
             }
         }
 
-        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
+        let initialRuntimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
         let preparationLanguage = preparationRequestedLanguage(
             for: languageSelection,
-            runtimeSelection: runtimeSelection,
+            runtimeSelection: initialRuntimeSelection,
             plugin: plugin
         )
         let overrideRestoreId = try await prepareEngineForTranscription(
@@ -653,6 +659,7 @@ final class ModelManagerService: ObservableObject {
             requestedLanguage: preparationLanguage,
             cloudModelOverride: cloudModelOverride
         )
+        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
 
         guard plugin.isConfigured else {
             restoreCloudModelOverride(plugin: plugin, previousId: overrideRestoreId)
@@ -813,10 +820,10 @@ final class ModelManagerService: ObservableObject {
             endAutoUnloadProtectedUse(of: plugin)
         }
 
-        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
+        let initialRuntimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
         let preparationLanguage = preparationRequestedLanguage(
             for: languageSelection,
-            runtimeSelection: runtimeSelection,
+            runtimeSelection: initialRuntimeSelection,
             plugin: plugin
         )
         overrideRestoreId = try await prepareEngineForTranscription(
@@ -824,6 +831,7 @@ final class ModelManagerService: ObservableObject {
             requestedLanguage: preparationLanguage,
             cloudModelOverride: cloudModelOverride
         )
+        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
 
         guard plugin.isConfigured else {
             throw modelNotLoadedError(for: plugin)
@@ -969,10 +977,10 @@ final class ModelManagerService: ObservableObject {
             endAutoUnloadProtectedUse(of: plugin)
         }
 
-        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
+        let initialRuntimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
         let preparationLanguage = preparationRequestedLanguage(
             for: languageSelection,
-            runtimeSelection: runtimeSelection,
+            runtimeSelection: initialRuntimeSelection,
             plugin: plugin
         )
         overrideRestoreId = try await prepareEngineForTranscription(
@@ -980,6 +988,7 @@ final class ModelManagerService: ObservableObject {
             requestedLanguage: preparationLanguage,
             cloudModelOverride: cloudModelOverride
         )
+        let runtimeSelection = runtimeLanguageSelection(for: languageSelection, plugin: plugin)
 
         guard plugin.isConfigured else {
             throw modelNotLoadedError(for: plugin)
@@ -1654,9 +1663,15 @@ final class ModelManagerService: ObservableObject {
     }
 
     private func modelNotLoadedError(for plugin: TranscriptionEnginePlugin) -> TranscriptionEngineError {
-        plugin.providerId == AppleSpeechModelSelection.providerId
-            ? .appleSpeechModelNotLoaded
-            : .modelNotLoaded
+        if plugin.providerId == AppleSpeechModelSelection.providerId {
+            return .appleSpeechModelNotLoaded
+        }
+        if let selectedId = plugin.selectedModelId,
+           !plugin.transcriptionModels.isEmpty,
+           !plugin.transcriptionModels.contains(where: { $0.id == selectedId }) {
+            return .modelUnavailable("Model '\(selectedId)' is not supported or not installed. Open Integrations to select an available model.")
+        }
+        return .modelNotLoaded
     }
 
     private func triggerAppleSpeechModelPreparation(
