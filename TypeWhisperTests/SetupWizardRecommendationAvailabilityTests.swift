@@ -291,6 +291,34 @@ final class SetupWizardRecommendationAvailabilityTests: XCTestCase {
         XCTAssertEqual(state, .installState(.error("Download failed")))
     }
 
+    func testEngineReadinessRequiresConfiguredStateNotJustSelectedModelId() {
+        // Issue #1335: A selected or persisted model ID alone must not produce a ready claim
+        // when the engine is not yet configured / loaded into memory.
+        XCTAssertFalse(
+            SetupWizardEngineReadiness.isReadyForTest(
+                isConfigured: false,
+                selectedModelId: "parakeet-tdt-0.6b-v3",
+                providerId: "parakeet"
+            )
+        )
+
+        XCTAssertFalse(
+            SetupWizardEngineReadiness.isReadyForTest(
+                isConfigured: false,
+                selectedModelId: nil,
+                providerId: "parakeet"
+            )
+        )
+
+        XCTAssertTrue(
+            SetupWizardEngineReadiness.isReadyForTest(
+                isConfigured: true,
+                selectedModelId: "parakeet-tdt-0.6b-v3",
+                providerId: "parakeet"
+            )
+        )
+    }
+
     private func makeRegistryPlugin(id: String) -> RegistryPlugin {
         RegistryPlugin(
             id: id,

@@ -1289,8 +1289,11 @@ struct SetupWizardView: View {
 
     private func canUseEngineForSetupTest(_ engine: TranscriptionEnginePlugin) -> Bool {
         guard modelManager.canUseForTranscription(engine) else { return false }
-        if engine.isConfigured { return true }
-        return engine.providerId != SetupWizardAppleSpeechFallback.providerId && engine.selectedModelId != nil
+        return SetupWizardEngineReadiness.isReadyForTest(
+            isConfigured: engine.isConfigured,
+            selectedModelId: engine.selectedModelId,
+            providerId: engine.providerId
+        )
     }
 
     private func canUseAppleSpeechFallbackEngine(_ engine: TranscriptionEnginePlugin?) -> Bool {
@@ -1628,6 +1631,20 @@ enum SetupWizardParakeetRecommendation {
         models.first { $0.id == "parakeet-tdt-0.6b-v3" }?.id
             ?? models.first { $0.id.localizedCaseInsensitiveContains("v3") }?.id
             ?? models.first?.id
+    }
+}
+
+enum SetupWizardEngineReadiness {
+    /// Evaluates truthful readiness for setup test.
+    /// A persisted or selected model ID alone does not produce a loaded/ready claim.
+    /// Non-Apple engines require full operational configuration (isConfigured).
+    static func isReadyForTest(
+        isConfigured: Bool,
+        selectedModelId: String?,
+        providerId: String
+    ) -> Bool {
+        if isConfigured { return true }
+        return false
     }
 }
 
