@@ -421,7 +421,7 @@ final class APIHandlers: @unchecked Sendable {
                             to: target,
                             source: sourceLanguage
                         )
-                        if !result.segments.isEmpty {
+                        if options.responseFormat == "verbose_json", !result.segments.isEmpty {
                             var translatedSegments: [TranscriptionSegment] = []
                             translatedSegments.reserveCapacity(result.segments.count)
                             for seg in result.segments {

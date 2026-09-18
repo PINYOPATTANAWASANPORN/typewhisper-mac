@@ -13466,6 +13466,7 @@ final class TypeWhisperIntegrationTests: XCTestCase {
     }
 
     func testTranslationServiceNormalizesTargetLanguageCode() {
+        guard #available(macOS 15.0, *) else { return }
         let normalizedDe = TranslationService.normalizedLanguageIdentifier(from: "de")
         XCTAssertEqual(normalizedDe, "de")
         let normalizedDeDe = TranslationService.normalizedLanguageIdentifier(from: "de-DE")
